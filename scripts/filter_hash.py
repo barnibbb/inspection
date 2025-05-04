@@ -1,25 +1,15 @@
 import os
+import sys
+import yaml
 from tqdm import tqdm
 from PIL import Image
 import imagehash
 import shutil
 
-def filter_n(input_folder, filtered_folder, n=3):
-    image_files = sorted([f for f in os.listdir(input_folder) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp'))])
+# Perform image selection based on similarity.
+# Only images that sufficiently differ from previous ones are preserved.
+def filter_hash(input_folder, filtered_folder, similarity_threshold=0.03, hash_size=8):
 
-    for i, filename in enumerate(image_files):
-        if i % n == 0:
-            src_path = os.path.join(input_folder, filename)
-            dst_path = os.path.join(filtered_folder, filename)
-            shutil.copy2(src_path, dst_path)
-
-    print(f"Copied {len(range(0, len(image_files), n))} images.") 
-
-
-
-def filter_hash(input_folder, filtered_folder):
-    similarity_threshold = 0.03
-    hash_size = 8
     max_hamming_distance = int(hash_size * hash_size * similarity_threshold)
 
     hashes = []
@@ -48,16 +38,29 @@ def filter_hash(input_folder, filtered_folder):
 
 if __name__ == "__main__":
 
+    if len(sys.argv) < 2:
+        print("Usage: python3 filter_hash.py <config_file>")
+        sys.exit(1)
+
+    # Setting basic parameters
+    config_file = sys.argv[1]
+
+    with open(config_file, 'r') as file:
+        data = yaml.safe_load(file)
+
+    similarity_threshold = data['similarity_threshold']
+    hash_size = data['hash_size']
+
+    # Setting up work folders
     input_folder = "/home/appuser/data/input_images"
-    colmap_folder = "/home/appuser/data/colmap/"
+    colmap_folder = "/home/appuser/data/colmap"
     filtered_folder = "/home/appuser/data/colmap/images"
 
     shutil.rmtree(colmap_folder, ignore_errors=True)
 
     os.makedirs(filtered_folder, exist_ok=True)
 
-    filter_n(input_folder, filtered_folder, 3)
-
-    # filter_hash(input_folder, filtered_folder)
+    # Perform filtering by similarity
+    filter_hash(input_folder, filtered_folder, similarity_threshold, hash_size)
 
 

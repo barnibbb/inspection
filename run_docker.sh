@@ -1,12 +1,15 @@
 #add all the local processes to xhost, so the container reaches the window manager
 xhost + local:
 
-code_folder="/home/barni/Programs/tkp/inspection/scripts"
-data="/home/barni/Programs/tkp/data_waste"
-vscode_folder="/home/barni/Programs/tkp/inspection/misc/.vscode"
+code_folder="./scripts"
+vscode_folder="./misc/.vscode"
 container_name="inspection_docker"
 image_name="inspection-docker"
 image_tag="latest"
+
+# Example
+data="/home/barni/Programs/tkp/data_waste"
+
 
 #check if correct directory paths are provided
 if [ -z "$data" ];

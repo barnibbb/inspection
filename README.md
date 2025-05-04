@@ -2,10 +2,11 @@
 
 ## Preliminary filtering
 
-Selecting every nth image from original folder.
+Selecting images from the original folder. Based on current experience, the order-based filtering is preferred.
 
 ```bash
-python3 filter_images.py
+python3 filter_order.py
+python3 filter_hash.py
 ```
 
 ## Incremental reconstruction
@@ -26,8 +27,6 @@ python3 colmap_vis.py
 
 ## TODO
 
-<ul>
-    <li>Set parameter file, and yaml reading</li>
-    <li>Update commands with arguments</li>
-    <li>Test dataset path and usage</li>
-</ul>
+- Set parameter file, and yaml reading
+- Update commands with arguments
+- Test dataset path and usage
