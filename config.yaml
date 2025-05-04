@@ -1,0 +1,6 @@
+# Filter by hash
+similarity_threshold: 0.03
+hash_size: 8
+
+# Filter by order
+step: 3
