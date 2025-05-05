@@ -1,5 +1,5 @@
 import os
-import sys
+import yaml
 import shutil
 
 # Filtering where every nth image is preserved.
@@ -18,12 +18,8 @@ def filter_order(input_folder, filtered_folder, n=3):
 
 if __name__ == "__main__":
 
-    if len(sys.argv) < 2:
-        print("Usage: python3 filter_order.py <config_file>")
-        sys.exit(1)
-
     # Setting basic parameters
-    config_file = sys.argv[1]
+    config_file = "/home/appuser/data/config.yaml"
 
     with open(config_file, 'r') as file:
         data = yaml.safe_load(file)

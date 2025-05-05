@@ -1,14 +1,17 @@
 import os
 import time
+import yaml
+import sys
 import open3d as o3d
 import numpy as np
 import tkinter as tk
 
+sys.path.append('/home/appuser/colmap/scripts/python')
 from read_write_model import read_points3D_binary, read_images_binary, read_points3D_text
 
 
-
-def create_frustum(R, C, scale=0.5):
+# Instead of simple spheres, frustum could be used for camera visualization
+def create_frustum(R, C, R_x, scale=0.1):
     z = scale
     half_size = scale * 0.5
     pts_cam = np.array([
@@ -20,6 +23,8 @@ def create_frustum(R, C, scale=0.5):
     ])
 
     pts_world = (R.T @ pts_cam.T).T + C
+
+    pts_world = (R_x @ pts_world.T).T
 
     lines = [
         [0, 1], [0, 2], [0, 3], [0, 4],
@@ -37,108 +42,12 @@ def create_frustum(R, C, scale=0.5):
     return line_set
 
 
-
-
-if __name__ == "__main__":
-
-    sparse_dir = "/home/appuser/data/colmap/output/"
-    dense_dir = "/home/appuser/data/colmap/dense_text"
-
-    points_path = os.path.join(sparse_dir, "points3D.bin")
-    images_path = os.path.join(sparse_dir, "images.bin")
-
-    dense_points_path = os.path.join(dense_dir, "points3D.txt")
-
-    filtered_ply = "/home/appuser/data/colmap/dense/filtered.ply"
-
-    creation_check_time = 1
-
-    while True:
-        if os.path.exists(points_path) and os.path.exists(images_path):
-            break
-        else:
-            print("Waiting for colmap files to be created...")
-        time.sleep(creation_check_time)
-
-
-    root = tk.Tk()
-    screen_width = root.winfo_screenwidth()
-    screen_height = root.winfo_screenheight()
-    root.destroy() 
-
-    refresh_interval = 1
-
-    vis = o3d.visualization.Visualizer()
-    vis.create_window("COLMAP Live Viewer", width=screen_width, height=screen_height)
-    geom_added = False
-
-    R_x = np.array([
-        [1,  0,  0],
-        [0, -1,  0],
-        [0,  0, -1]
-    ])
-
-
-    while True:
-        try:
-            points3D = read_points3D_binary(points_path)
-            images = read_images_binary(images_path)
-
-            pts = np.array([p.xyz for p in points3D.values()])
-            colors = np.array([p.rgb / 255.0 for p in points3D.values()])
-
-            cam_centers = []
-
-            for img in images.values():
-                q = img.qvec
-                t = img.tvec
-                R = o3d.geometry.get_rotation_matrix_from_quaternion([q[0], q[1], q[2], q[3]])
-                C = -R.T @ t
-                C = R_x @ C
-                cam_centers.append(C)
-                # frustum = create_frustum(R, C)
-                # cam_frustums.append(frustum)
-
-            pc = o3d.geometry.PointCloud()
-            pc.points = o3d.utility.Vector3dVector(pts)
-            pc.colors = o3d.utility.Vector3dVector(colors)
-
-            pcd_clean, ind = pc.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
-
-
-
-            pcd_clean.rotate(R_x, center=(0, 0, 0))
-
-            cam_spheres = [o3d.geometry.TriangleMesh.create_sphere(radius=0.1).translate(c) for c in cam_centers]
-
-            for s in cam_spheres:
-                s.paint_uniform_color([1, 0, 0])
-
-            if not geom_added:
-                vis.add_geometry(pcd_clean)
-                for s in cam_spheres:
-                    vis.add_geometry(s)
-                geom_added = True
-            else:
-                vis.clear_geometries()
-                vis.add_geometry(pcd_clean)
-                for s in cam_spheres:
-                    vis.add_geometry(s)
-            
-            vis.poll_events()
-            vis.update_renderer()
-
-        except Exception as e:
-            print(f"Failed to read or update view: {e}")
-
-
-        if os.path.exists(dense_points_path):
-            break
-        else:
-            time.sleep(refresh_interval)
-
-
-    points3D = read_points3D_text(dense_points_path)
+def read_points(points_path, sparse=True):
+    # Reading 3D points
+    if sparse:
+        points3D = read_points3D_binary(points_path)
+    else:
+        points3D = read_points3D_text(points_path)
 
     pts = np.array([p.xyz for p in points3D.values()])
     colors = np.array([p.rgb / 255.0 for p in points3D.values()])
@@ -147,25 +56,137 @@ if __name__ == "__main__":
     pc.points = o3d.utility.Vector3dVector(pts)
     pc.colors = o3d.utility.Vector3dVector(colors)
 
-    pcd_clean, ind = pc.remove_statistical_outlier(nb_neighbors=50, std_ratio=0.0001)
+    # Outlier removal
+    if sparse:
+        pcd_clean, ind = pc.remove_statistical_outlier(nb_neighbors=data['s_nb_neighbors'], std_ratio=data['s_std_ratio'])
+    else:
+        pcd_clean, ind = pc.remove_statistical_outlier(nb_neighbors=data['d_nb_neighbors'], std_ratio=data['d_std_ratio'])
+
 
     pcd_clean.rotate(R_x, center=(0, 0, 0))
 
-    cam_spheres = [o3d.geometry.TriangleMesh.create_sphere(radius=0.05).translate(c) for c in cam_centers]
+    return pcd_clean
 
-    for s in cam_spheres:
-        s.paint_uniform_color([1, 0, 0])
 
-    if not geom_added:
-        vis.add_geometry(pcd_clean)
-        for s in cam_spheres:
-            vis.add_geometry(s)
-        geom_added = True
-    else:
+def add_elements(vis, pcd, cameras, geom_added):
+    if geom_added:
         vis.clear_geometries()
-        vis.add_geometry(pcd_clean)
-        for s in cam_spheres:
-            vis.add_geometry(s)
+    
+    vis.add_geometry(pcd)
+    for s in cameras:
+        vis.add_geometry(s)
+
+    return vis
+
+
+
+
+
+if __name__ == "__main__":
+
+    # Reading basic parameters
+    config_file = "/home/appuser/data/config.yaml"
+
+    with open(config_file, "r") as file:
+        data = yaml.safe_load(file)
+
+    # Setup paths
+    sparse_dir = "/home/appuser/data/colmap/output"
+    dense_dir = "/home/appuser/data/colmap/dense_text"
+
+    points_path = os.path.join(sparse_dir, "points3D.bin")
+    images_path = os.path.join(sparse_dir, "images.bin")
+    dense_points_path = os.path.join(dense_dir, "points3D.txt")
+    
+    # Waiting until the first 3D reconstruction is performed
+    while True:
+        if os.path.exists(points_path) and os.path.exists(images_path):
+            break
+        else:
+            print("Waiting for colmap files to be created...")
+        time.sleep(data['initial_check_interval'])
+
+    # Setting up window for visualization
+    root = tk.Tk()
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    root.destroy() 
+
+    vis = o3d.visualization.Visualizer()
+    vis.create_window("COLMAP Live Viewer", width=screen_width, height=screen_height)
+    geom_added = False
+    frustum = data.get('frustum', False)
+
+
+    # Change orientation if required
+    flip_orientation = data.get('flip_orientation', False)
+
+    if flip_orientation == 1:
+        R_x = np.array([
+            [1,  0,  0],
+            [0, -1,  0],
+            [0,  0, -1]
+        ])
+    else:
+        R_x = np.array([
+            [1, 0, 0],
+            [0, 1, 0],
+            [0, 0, 1]
+        ])
+
+
+    while True:
+        try:
+            # Reading 3D points
+            pcd_clean = read_points(points_path, True)
+
+            # Reading camera poses
+            images = read_images_binary(images_path)
+
+            camera_poses = []
+
+            # Reading camera poses and converting to world coordinates
+            for img in images.values():
+                q = img.qvec
+                t = img.tvec
+                R = o3d.geometry.get_rotation_matrix_from_quaternion([q[0], q[1], q[2], q[3]])
+                C = -R.T @ t
+                if frustum:
+                    frustum = create_frustum(R, C, R_x)
+                    camera_poses.append(frustum)
+                else:
+                    camera_poses.append(R_x @ C)
+                
+            if frustum:
+                cameras = camera_poses
+            else:
+                cameras = [o3d.geometry.TriangleMesh.create_sphere(radius=0.05).translate(c) for c in camera_poses]
+
+            for s in cameras:
+                s.paint_uniform_color([1, 0, 0])
+
+            # Add elements to visualization tool
+            vis = add_elements(vis, pcd_clean, cameras, geom_added)
+            geom_added = True
+            
+            vis.poll_events()
+            vis.update_renderer()
+
+        except Exception as e:
+            print(f"Failed to read or update view: {e}")
+
+        # When the dense reconstruction is created the loop is broken
+        if os.path.exists(dense_points_path):
+            break
+        else:
+            time.sleep(data['refresh_interval'])
+
+
+    # Reading 3D points
+    pcd_clean = read_points(dense_points_path, False)
+
+    # Add elements to visualization tool
+    vis = add_elements(vis, pcd_clean, cameras, geom_added)
     
     render_option = vis.get_render_option()
     render_option.point_size = 0.5

@@ -1,5 +1,4 @@
 import os
-import sys
 import yaml
 from tqdm import tqdm
 from PIL import Image
@@ -38,12 +37,8 @@ def filter_hash(input_folder, filtered_folder, similarity_threshold=0.03, hash_s
 
 if __name__ == "__main__":
 
-    if len(sys.argv) < 2:
-        print("Usage: python3 filter_hash.py <config_file>")
-        sys.exit(1)
-
     # Setting basic parameters
-    config_file = sys.argv[1]
+    config_file = "/home/appuser/data/config.yaml"
 
     with open(config_file, 'r') as file:
         data = yaml.safe_load(file)

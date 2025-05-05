@@ -1,5 +1,23 @@
 # Inspection
 
+## Setup
+
+```bash
+./build_docker.sh
+./run_docker.sh
+```
+
+The mounted data folder should look like this:
+
+```text
+data/
+├── input_images/
+├── config.yaml
+└── vocab_tree_flickr100K_words32K.bin
+```
+
+The vocab_tree_flickr100K_words32K.bin and an example config.yaml files are provided.
+
 ## Preliminary filtering
 
 Selecting images from the original folder. Based on current experience, the order-based filtering is preferred.
@@ -25,8 +43,18 @@ Should be run in parallel with the reconstruction to visualize the current state
 python3 colmap_vis.py
 ```
 
-## TODO
+Example reconstruction of waste after filtering.
 
-- Set parameter file, and yaml reading
-- Update commands with arguments
-- Test dataset path and usage
+![Colmap visualization](/assets/colmap_vis.png "Colmap visualization")
+
+## Outlier removal
+
+Outliers can be removed not just during the visualization.
+
+```bash
+python3 outlier_removal.py
+```
+
+## Future work
+
+- parameter test

@@ -10,7 +10,6 @@ image_tag="latest"
 # Example
 data="/home/barni/Programs/tkp/data_waste"
 
-
 #check if correct directory paths are provided
 if [ -z "$data" ];
 then

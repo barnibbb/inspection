@@ -1,31 +1,35 @@
 import subprocess
 import time
 import os
-import sys
 import shutil
 import math
+import yaml
+
+
+def move_files(src_folder, dst_folder):
+    shutil.copy2(src_folder + "cameras.bin", dst_folder + "cameras.bin")
+    shutil.copy2(src_folder + "images.bin", dst_folder + "images.bin")
+    shutil.copy2(src_folder + "points3D.bin", dst_folder + "points3D.bin")
 
 
 if __name__ == "__main__":
 
-    if len(sys.argv) < 2:
-        print("Usage: python3 incremental_colmap.py <work_folder_path>")
-        sys.exit(1)
+    start_time = time.time()
 
-    work_folder = sys.argv[1]
-
-    database_path = work_folder + "/aerial.db"
-    image_path = work_folder + "/images/"
+    # Setup paths to directories
+    work_folder = "/home/appuser/data/colmap/"
+    database_path = work_folder + "aerial.db"
+    image_path = work_folder + "images/"
     vocab_tree_path = work_folder + "../vocab_tree_flickr100K_words32K.bin"
-    base_output_path = work_folder + "/sparse/"
-    output_model_path = base_output_path + "/0/"
-    dense_path = work_folder + "/dense/"
-    dense_text_path = work_folder + "/dense_text/"
-    ply_path = work_folder + "/dense/fused.ply"
+    base_output_path = work_folder + "sparse/"
+    output_model_path = base_output_path + "0/"
+    dense_path = work_folder + "dense/"
+    dense_text_path = work_folder + "dense_text/"
+    ply_path = work_folder + "dense/fused.ply"
 
-    input_path = work_folder + "/input/"
-    output_path = work_folder + "/output/"
-    output_base = work_folder + "/sub/"
+    input_path = work_folder + "input/"
+    output_path = work_folder + "output/"
+    output_base = work_folder + "sub/"
 
     # Initial cleanup
     shutil.rmtree(dense_path, ignore_errors=True)
@@ -38,9 +42,7 @@ if __name__ == "__main__":
     if os.path.exists(database_path):
         result = subprocess.run(f"rm {database_path}", shell=True, check=True)
 
-
-    
-
+    # Creating required directories
     os.makedirs(base_output_path, exist_ok=True)
     os.makedirs(input_path, exist_ok=True)
     os.makedirs(output_path, exist_ok=True)
@@ -48,9 +50,17 @@ if __name__ == "__main__":
     os.makedirs(dense_text_path, exist_ok=True)
 
 
+    # Reading basic parameters
+    config_file = "/home/appuser/data/config.yaml"
+
+    with open(config_file, 'r') as file:
+        data = yaml.safe_load(file)
+
 
     # Splitting the input images to n subgroups
-    n = 7
+    n = data['image_groups']
+
+    print(f"Number of image groups: {n}")
 
     for i in range(1, n+1):
         os.makedirs(os.path.join(output_base, str(i)), exist_ok=True)
@@ -69,9 +79,9 @@ if __name__ == "__main__":
             shutil.move(src_path, dst_path)
 
 
+    # Incremental reconstruction with image groups
     images_before = set(os.listdir(image_path))
 
-    # Incremental reconstruction with image groups
     for i in range(1, n+1):
         
         # Copying new images, simulating the upload of new images
@@ -110,19 +120,17 @@ if __name__ == "__main__":
             "--image_path", image_path,
             "--image_list_path", image_list_path,
             "--SiftExtraction.use_gpu", "1",
-            "--ImageReader.camera_model", "PINHOLE",
-            "--ImageReader.camera_params", "\"1064.27, 1064.27, 986.697, 559.228\"",
-            # "--ImageReader.camera_model", "FULL_OPENCV",
-            # "--ImageReader.camera_params", "\"3774.87519624938522611046, 3774.87519624938522611046, 2994.32053596355581248645, 2009.16854628427108764299, -0.07513844017734828962, 0.07885532382347501534, 0.00030047767052433631, -0.00002012382737918220, -0.02505007537309405716, 0, 0, 0\"",
+            "--ImageReader.camera_model", "FULL_OPENCV",
+            "--ImageReader.camera_params", f"\"{data['fx']:.4f}, {data['fy']:.4f}, {data['cx']:.4f}, {data['cy']:.4f}, {data['k1']:.4f}, {data['k2']:.4f}, {data['p1']:.4f}, {data['p2']:.4f}, {data['k3']:.4f}, {data['k4']:.4f}, {data['k5']:.4f}, {data['k6']:.4f}\""
             "--ImageReader.single_camera", "1"
         ]
 
         command_extractor = " ".join(extractor)
-
         result = subprocess.run(command_extractor, shell=True, check=True)
 
 
         # Feature matching
+        # For this type of incremental reconstruction only vocab tree matching works
         matcher = [
             "colmap", "vocab_tree_matcher",
             "--database_path", database_path,
@@ -131,68 +139,41 @@ if __name__ == "__main__":
         ]
 
         command_matcher = " ".join(matcher)
-
         result = subprocess.run(command_matcher, shell=True, check=True)
 
 
         # 3D mapping
-        if i == 1: 
-            mapper = [
-                "colmap", "mapper",
-                "--database_path", database_path,
-                "--image_path", image_path,
-                "--output_path", base_output_path,
-                "--Mapper.multiple_models", "0",
-                "--Mapper.ba_refine_focal_length", "0",
-                "--Mapper.ba_refine_extra_params", "0"
-            ]
-
-            cameras_1 = output_model_path + "cameras.bin"
-            images_1 = output_model_path + "images.bin"
-            points_1 = output_model_path + "points3D.bin"
-
-            cameras_2 = input_path + "cameras.bin"
-            images_2 = input_path + "images.bin"
-            points_2 = input_path + "points3D.bin"
-
-
+        if i == 1:
+            src_folder = output_model_path
+            out_path = base_output_path
         else:
-            mapper = [
-                "colmap", "mapper",
-                "--database_path", database_path,
-                "--image_path", image_path,
-                "--input_path", input_path,
-                "--output_path", output_path,
-                "--Mapper.multiple_models", "0",
-                "--Mapper.ba_refine_focal_length", "0",
-                "--Mapper.ba_refine_extra_params", "0"
-            ]
+            src_folder = output_path
+            out_path = output_path
 
-            cameras_1 = output_path + "cameras.bin"
-            images_1 = output_path + "images.bin"
-            points_1 = output_path + "points3D.bin"
+        mapper = [
+            "colmap", "mapper",
+            "--database_path", database_path,
+            "--image_path", image_path,
+            "--output_path", out_path,
+            "--Mapper.multiple_models", "0",
+            "--Mapper.ba_refine_focal_length", "0",
+            "--Mapper.ba_refine_extra_params", "0"
+        ]
 
-            cameras_2 = input_path +  "cameras.bin"
-            images_2 = input_path + "images.bin"
-            points_2 = input_path + "points3D.bin"
-
+        # In the first iteration no input reconstruction is set
+        if i > 1:
+            mapper.append("--input_path")
+            mapper.append(input_path)
 
         command_mapper = " ".join(mapper)
-
         result = subprocess.run(command_mapper, shell=True, check=True)
         
-        shutil.copy2(cameras_1, cameras_2)
-        shutil.copy2(images_1, images_2)
-        shutil.copy2(points_1, points_2)
+        # Moving output files to the input folder, for the next iteration
+        move_files(src_folder, input_path)
 
+        # Moving output files in first iteration for visualization
         if i == 1:
-            cameras_3 = output_path + "cameras.bin"
-            images_3 = output_path + "images.bin"
-            points_3 = output_path + "points3D.bin"
-
-            shutil.copy2(cameras_1, cameras_3)
-            shutil.copy2(images_1, images_3)
-            shutil.copy2(points_1, points_3)
+            move_files(output_model_path, output_path)
 
 
     # Image undistortion
@@ -203,7 +184,6 @@ if __name__ == "__main__":
         "--output_path", dense_path]
 
     command_undistort = " ".join(undistort)
-
     result = subprocess.run(command_undistort, shell=True, check=True)
 
 
@@ -211,16 +191,15 @@ if __name__ == "__main__":
     stereo = [
         "colmap", "patch_match_stereo", 
         "--workspace_path", dense_path, 
-        "--PatchMatchStereo.num_iterations", "3",
-        "--PatchMatchStereo.geom_consistency", "0",
-        "--PatchMatchStereo.filter", "1",
-        "--PatchMatchStereo.max_image_size", "1000",
-        "--PatchMatchStereo.window_step", "2",
-        "--PatchMatchStereo.window_radius", "3",
-        "--PatchMatchStereo.num_samples", "10"]
+        "--PatchMatchStereo.num_iterations", f"{data['num_iterations']}",
+        "--PatchMatchStereo.geom_consistency", f"{data['geom_consistency']}",
+        "--PatchMatchStereo.filter", f"{data['filter']}",
+        "--PatchMatchStereo.max_image_size", f"{data['max_image_size']}",
+        "--PatchMatchStereo.window_step", f"{data['window_step']}",
+        "--PatchMatchStereo.window_radius", f"{data['window_radius']}",
+        "--PatchMatchStereo.num_samples", f"{data['num_samples']}"]
 
     command_stereo = " ".join(stereo)
-
     result = subprocess.run(command_stereo, shell=True, check=True)
 
 
@@ -235,7 +214,6 @@ if __name__ == "__main__":
         "--StereoFusion.min_num_pixels", "3"]
 
     command_fusion = " ".join(fusion)
-
     result = subprocess.run(command_fusion, shell=True, check=True)
 
 
@@ -247,8 +225,10 @@ if __name__ == "__main__":
         "--output_type", "PLY"]
 
     command_export = " ".join(export)
+    result = subprocess.run(command_export, shell=True, check=True)
 
 
+    end_time = time.time()
+    execution_time = end_time - start_time
 
-
-
+    print(f"Execution time:\t {execution_time} seconds.")
