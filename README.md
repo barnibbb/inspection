@@ -16,7 +16,7 @@ data/
 └── vocab_tree_flickr100K_words32K.bin
 ```
 
-The vocab_tree_flickr100K_words32K.bin and an example config.yaml files are provided.
+The vocab_tree_flickr100K_words32K.bin and an example config.yaml files are provided in the assets folder.
 
 ## Preliminary filtering
 
