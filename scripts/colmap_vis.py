@@ -42,7 +42,7 @@ def create_frustum(R, C, R_x, scale=0.1):
     return line_set
 
 
-def read_points(points_path, sparse=True):
+def read_points(points_path, R_x, sparse=True):
     # Reading 3D points
     if sparse:
         points3D = read_points3D_binary(points_path)
@@ -61,7 +61,6 @@ def read_points(points_path, sparse=True):
         pcd_clean, ind = pc.remove_statistical_outlier(nb_neighbors=data['s_nb_neighbors'], std_ratio=data['s_std_ratio'])
     else:
         pcd_clean, ind = pc.remove_statistical_outlier(nb_neighbors=data['d_nb_neighbors'], std_ratio=data['d_std_ratio'])
-
 
     pcd_clean.rotate(R_x, center=(0, 0, 0))
 
@@ -138,7 +137,7 @@ if __name__ == "__main__":
     while True:
         try:
             # Reading 3D points
-            pcd_clean = read_points(points_path, True)
+            pcd_clean = read_points(points_path, R_x, True)
 
             # Reading camera poses
             images = read_images_binary(images_path)
@@ -183,7 +182,7 @@ if __name__ == "__main__":
 
 
     # Reading 3D points
-    pcd_clean = read_points(dense_points_path, False)
+    pcd_clean = read_points(dense_points_path, R_x, False)
 
     # Add elements to visualization tool
     vis = add_elements(vis, pcd_clean, cameras, geom_added)

@@ -138,6 +138,11 @@ if __name__ == "__main__":
             "--VocabTreeMatching.match_list_path", image_list_path
         ]
 
+        # matcher = [
+        #     "colmap", "sequential_matcher", 
+        #     "--database_path", database_path,
+        # ]
+
         command_matcher = " ".join(matcher)
         result = subprocess.run(command_matcher, shell=True, check=True)
 

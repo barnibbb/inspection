@@ -8,7 +8,7 @@ image_name="inspection-docker"
 image_tag="latest"
 
 # Example
-data="/home/barni/Programs/tkp/data_waste"
+data="/home/barni/Test/inspection_bag4"
 
 #check if correct directory paths are provided
 if [ -z "$data" ];
