@@ -55,6 +55,18 @@ Outliers can be removed not just during the visualization.
 python3 outlier_removal.py
 ```
 
+## Crop the center
+
+If not masked images are used during the reconstruction the area around the target object (being approximately in the center of cameras) can be cropped. Outlier removal can be applied to this point cloud as well.
+
+```bash
+python3 crop_object.py
+```
+
+Example with bag images.
+
+![Bag crop](/assets/bag_crop.png "Bag crop")
+
 ## Future work
 
 - parameter test
