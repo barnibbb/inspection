@@ -20,7 +20,7 @@ if __name__ == "__main__":
     work_folder = "/home/appuser/data/colmap/"
     database_path = work_folder + "aerial.db"
     image_path = work_folder + "images/"
-    vocab_tree_path = work_folder + "../vocab_tree_flickr100K_words32K.bin"
+    vocab_tree_path = work_folder + "../vocab_tree_faiss_flickr100K_words256K.bin"
     base_output_path = work_folder + "sparse/"
     output_model_path = base_output_path + "0/"
     dense_path = work_folder + "dense/"
@@ -120,8 +120,8 @@ if __name__ == "__main__":
             "--image_path", image_path,
             "--image_list_path", image_list_path,
             "--SiftExtraction.use_gpu", "1",
-            "--ImageReader.camera_model", "FULL_OPENCV",
-            "--ImageReader.camera_params", f"\"{data['fx']:.4f}, {data['fy']:.4f}, {data['cx']:.4f}, {data['cy']:.4f}, {data['k1']:.4f}, {data['k2']:.4f}, {data['p1']:.4f}, {data['p2']:.4f}, {data['k3']:.4f}, {data['k4']:.4f}, {data['k5']:.4f}, {data['k6']:.4f}\""
+            "--ImageReader.camera_model", "PINHOLE",
+            # "--ImageReader.camera_params", f"\"{data['fx']:.4f}, {data['fy']:.4f}, {data['cx']:.4f}, {data['cy']:.4f}, {data['k1']:.4f}, {data['k2']:.4f}, {data['p1']:.4f}, {data['p2']:.4f}, {data['k3']:.4f}, {data['k4']:.4f}, {data['k5']:.4f}, {data['k6']:.4f}\""
             "--ImageReader.single_camera", "1"
         ]
 

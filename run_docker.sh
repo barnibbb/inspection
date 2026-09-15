@@ -2,13 +2,12 @@
 xhost + local:
 
 code_folder="./scripts"
-vscode_folder="./misc/.vscode"
 container_name="inspection_docker"
 image_name="inspection-docker"
 image_tag="latest"
 
 # Example
-data="/home/barni/Test/inspection_bag4"
+data="/home/barni/Experiments/inspection2"
 
 #check if correct directory paths are provided
 if [ -z "$data" ];
@@ -57,7 +56,6 @@ else
         --volume /tmp/.X11-unix:/tmp/.X11-unix \
         --volume ${code_folder}:/home/appuser/inspection \
         --volume ${data}:/home/appuser/data \
-        --volume ${vscode_folder}:/home/appuser/inspection/.vscode \
         --network host \
         --interactive \
         --privileged \
@@ -66,5 +64,6 @@ else
         --gpus all \
         --runtime=nvidia \
         --name $container_name \
+        --shm-size=8g \
         $image_name:$image_tag 
 fi
